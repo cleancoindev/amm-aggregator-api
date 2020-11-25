@@ -1,0 +1,11 @@
+/**/.DS_Store
+/**/.vscode
+/**/spa/**/style.css
+/**/node_modules
+/**/package-lock.json
+/**/npm/dist
+/**/contracts-out
+/**/truffle-config.js
+/**/artifacts
+/**/eth-item-token-standard-old
+/**/bin
