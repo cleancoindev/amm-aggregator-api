@@ -8,11 +8,11 @@ interface IAMM {
 
     function info() external pure returns(string memory name, uint256 version);
 
-    function addLiquidity(LiquidityToAdd calldata data) external payable;
-    function addLiquidityBatch(LiquidityToAdd[] calldata data) external payable;
+    function addLiquidity(LiquidityProviderData calldata data) external payable;
+    function addLiquidityBatch(LiquidityProviderData[] calldata data) external payable;
 
-    function removeLiquidity(LiquidityToRemove calldata data) external;
-    function removeLiquidityBatch(LiquidityToRemove[] calldata data) external;
+    function removeLiquidity(LiquidityProviderData calldata data) external;
+    function removeLiquidityBatch(LiquidityProviderData[] calldata data) external;
 
     function swapLiquidity(LiquidityToSwap calldata data) external payable;
     function swapLiquidityBatch(LiquidityToSwap[] calldata data) external payable;

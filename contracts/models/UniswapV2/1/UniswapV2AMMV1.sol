@@ -30,72 +30,70 @@ contract UniswapV2AMMV1 is IUniswapV2AMMV1, AMM {
         return ("UniswapV2AMM", 1);
     }
 
-    function addLiquidity(LiquidityToAdd memory data) public payable virtual override {
-        _transferToMeAndCheckAllowance(data, _uniswapV2RouterAddress);
+    function addLiquidity(LiquidityProviderData memory data) public payable virtual override {
+        _transferToMeAndCheckAllowance(data, _uniswapV2RouterAddress, true);
         _addLiquidityWork(data);
-        _flushBack(msg.sender, data.tokenA, data.tokenB);
+        _flushBack(msg.sender, data.tokens, data.tokens.length);
     }
 
-    function addLiquidityBatch(LiquidityToAdd[] memory data) public payable virtual override {
-        (address[] memory tokens, uint256 tokensLength) = _transferToMeAndCheckAllowance(data, _uniswapV2RouterAddress);
+    function addLiquidityBatch(LiquidityProviderData[] memory data) public payable virtual override {
+        (address[] memory tokens, uint256 tokensLength) = _transferToMeAndCheckAllowance(data, _uniswapV2RouterAddress, true);
         for(uint256 i = 0; i < data.length; i++) {
             _addLiquidityWork(data[i]);
         }
         _flushBack(msg.sender, tokens, tokensLength);
     }
 
-    function _addLiquidityWork(LiquidityToAdd memory data) internal virtual {
+    function _addLiquidityWork(LiquidityProviderData memory data) internal virtual {
         require(data.receiver != address(0), "Receiver cannot be void address");
-        if(!data.tokenAIsETH && !data.tokenBIsETH) {
+        if(data.tokens[0] != address(0) && data.tokens[1] != address(0)) {
             IUniswapV2Router(_uniswapV2RouterAddress).addLiquidity(
-                data.tokenA,
-                data.tokenB,
-                data.tokenAAmount,
-                data.tokenAAmount,
-                data.tokenAMinimumAmount,
-                data.tokenBMinimumAmount,
+                data.tokens[0],
+                data.tokens[1],
+                data.amounts[0],
+                data.amounts[1],
+                1,
+                1,
                 data.receiver,
                 block.timestamp + 10000
             );
         } else {
-            address token = data.tokenAIsETH ? data.tokenB : data.tokenA;
-            uint256 amountTokenDesired = data.tokenAIsETH ? data.tokenBAmount : data.tokenAAmount;
-            uint256 amountTokenMin = data.tokenAIsETH ? data.tokenAMinimumAmount : data.tokenAMinimumAmount;
-            uint256 amountETHDesired = data.tokenAIsETH ? data.tokenAAmount : data.tokenBAmount;
-            uint256 amountETHMin = data.tokenAIsETH ? data.tokenAMinimumAmount : data.tokenAMinimumAmount;
+            address token = data.tokens[0] != address(0) ? data.tokens[0] : data.tokens[1];
+            uint256 amountTokenDesired = data.tokens[0] != address(0) ? data.amounts[0] : data.amounts[1];
+            uint256 amountETHDesired = data.tokens[0] == address(0) ? data.amounts[0] : data.amounts[1];
             IUniswapV2Router(_uniswapV2RouterAddress).addLiquidityETH {value : amountETHDesired} (
                 token,
                 amountTokenDesired,
-                amountTokenMin,
-                amountETHMin,
+                1,
+                1,
                 data.receiver,
                 block.timestamp + 10000
             );
         }
     }
 
-    function removeLiquidity(LiquidityToRemove memory data) public virtual override {
-        _transferToMeAndCheckAllowance(data.liquidityToken, data.liquidityAmount, _uniswapV2RouterAddress);
+    function removeLiquidity(LiquidityProviderData memory data) public virtual override {
+        _transferToMeAndCheckAllowance(data, _uniswapV2RouterAddress, false);
         _removeLiquidityWork(data);
-        _flushBack(msg.sender, data.liquidityToken);
+        _flushBack(msg.sender, data.liquidityProviderAddress);
     }
 
-    function removeLiquidityBatch(LiquidityToRemove[] memory data) public virtual override {
-        (address[] memory tokens, uint256 tokensLength) = _transferToMeAndCheckAllowance(data, _uniswapV2RouterAddress);
+    function removeLiquidityBatch(LiquidityProviderData[] memory data) public virtual override {
+        (address[] memory tokens, uint256 tokensLength) = _transferToMeAndCheckAllowance(data, _uniswapV2RouterAddress, false);
         for(uint256 i = 0; i < data.length; i++) {
             _removeLiquidityWork(data[i]);
         }
         _flushBack(msg.sender, tokens, tokensLength);
     }
 
-    function _removeLiquidityWork(LiquidityToRemove memory data) internal virtual {
+    function _removeLiquidityWork(LiquidityProviderData memory data) internal virtual {
         require(data.receiver != address(0), "Receiver cannot be void address");
-        address token0 = IUniswapV2Pair(data.liquidityToken).token0();
-        address token1 = IUniswapV2Pair(data.liquidityToken).token1();
-        if(!data.ethInvolved) {
-            IUniswapV2Router(_uniswapV2RouterAddress).removeLiquidity(token0, token1, data.liquidityAmount, 1, 1, data.receiver, block.timestamp + 1000);
+        address token0 = IUniswapV2Pair(data.liquidityProviderAddress).token0();
+        address token1 = IUniswapV2Pair(data.liquidityProviderAddress).token1();
+        if(data.tokens[0] != address(0) && data.tokens[1] != address(0)) {
+            IUniswapV2Router(_uniswapV2RouterAddress).removeLiquidity(token0, token1, data.liquidityProviderAmount, 1, 1, data.receiver, block.timestamp + 1000);
         } else {
-            IUniswapV2Router(_uniswapV2RouterAddress).removeLiquidityETH(token0 != _wethAddress ? token0 : token1, data.liquidityAmount, 1, 1, data.receiver, block.timestamp + 1000);
+            IUniswapV2Router(_uniswapV2RouterAddress).removeLiquidityETH(token0 != _wethAddress ? token0 : token1, data.liquidityProviderAmount, 1, 1, data.receiver, block.timestamp + 1000);
         }
     }
 

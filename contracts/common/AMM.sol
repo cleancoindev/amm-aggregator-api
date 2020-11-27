@@ -45,41 +45,31 @@ abstract contract AMM is IAMM {
         _safeTransfer(tokenAddress, sender, balance);
     }
 
-    function _transferToMeAndCheckAllowance(LiquidityToAdd memory data, address operator) internal virtual {
-        if(!data.tokenAIsETH) {
-            _transferToMeAndCheckAllowance(data.tokenA, data.tokenAAmount, operator);
+    function _transferToMeAndCheckAllowance(LiquidityProviderData memory data, address operator, bool add) internal virtual {
+        if(!add) {
+            return _transferToMeAndCheckAllowance(data.liquidityProviderAddress, data.liquidityProviderAmount, operator);
         }
-        if(!data.tokenBIsETH) {
-            _transferToMeAndCheckAllowance(data.tokenB, data.tokenBAmount, operator);
-        }
+        _transferToMeAndCheckAllowance(data.tokens, data.amounts, operator);
     }
 
-    function _transferToMeAndCheckAllowance(LiquidityToAdd[] memory data, address operator) internal virtual returns (address[] memory tokens, uint256 length) {
-        tokens = new address[](data.length * 2);
+    function _transferToMeAndCheckAllowance(LiquidityProviderData[] memory data, address operator, bool add) internal virtual returns (address[] memory tokens, uint256 length) {
+        tokens = new address[](200);
         for(uint256 i = 0; i < data.length; i++) {
-            if(data[i].tokenA != address(0) && !data[i].tokenAIsETH) {
-                if(_tokenValuesToTransfer[data[i].tokenA] == 0) {
-                    tokens[length++] = data[i].tokenA;
+            if(!add) {
+                if(_tokenValuesToTransfer[data[i].liquidityProviderAddress] == 0) {
+                    tokens[length++] = data[i].liquidityProviderAddress;
                 }
-                _tokenValuesToTransfer[data[i].tokenA] += data[i].tokenAAmount;
+                _tokenValuesToTransfer[data[i].liquidityProviderAddress] += data[i].liquidityProviderAmount;
+                continue;
             }
-            if(data[i].tokenB != address(0) && data[i].tokenBIsETH) {
-                if(_tokenValuesToTransfer[data[i].tokenB] == 0) {
-                    tokens[length++] = data[i].tokenB;
+            address[] memory tokensInput = data[i].tokens;
+            uint256[] memory amounts = data[i].amounts;
+            for(uint256 j = 0; j < tokensInput.length; j++) {
+                if(_tokenValuesToTransfer[tokensInput[j]] == 0) {
+                    tokens[length++] = tokensInput[j];
                 }
-                _tokenValuesToTransfer[data[i].tokenB] += data[i].tokenBAmount;
+                _tokenValuesToTransfer[tokensInput[j]] += amounts[j];
             }
-        }
-        _transferToMeCheckAllowanceAndClear(tokens, length, operator);
-    }
-
-    function _transferToMeAndCheckAllowance(LiquidityToRemove[] memory data, address operator) internal virtual returns (address[] memory tokens, uint256 length) {
-        tokens = new address[](data.length);
-        for(uint256 i = 0; i < data.length; i++) {
-            if(_tokenValuesToTransfer[data[i].liquidityToken] == 0) {
-                tokens[length++] = data[i].liquidityToken;
-            }
-            _tokenValuesToTransfer[data[i].liquidityToken] += data[i].liquidityAmount;
         }
         _transferToMeCheckAllowanceAndClear(tokens, length, operator);
     }
@@ -103,6 +93,13 @@ abstract contract AMM is IAMM {
             delete _tokenValuesToTransfer[tokens[i]];
         }
     }
+
+    function _transferToMeAndCheckAllowance(address[] memory tokens, uint256[] memory amounts, address operator) internal virtual {
+        for(uint256 i = 0; i < tokens.length; i++) {
+            _transferToMeAndCheckAllowance(tokens[i], amounts[i], operator);
+        }
+    }
+
 
     function _transferToMeAndCheckAllowance(address tokenAddress, uint256 value, address operator) internal virtual {
         _transferToMe(tokenAddress, value);
@@ -147,5 +144,4 @@ abstract contract AMM is IAMM {
         }
         return (tokenB, tokenA);
     }
-
 }
